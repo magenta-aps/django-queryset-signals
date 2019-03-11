@@ -23,6 +23,9 @@ from django_query_signals import (
 # TODO: Consider m2m_changed
 
 
+from parameterized import parameterized, parameterized_class
+
+
 # pylint: disable=unused-variable, unused-argument
 class MainTest(TestCase):
     """Test that signal methods are actually called."""
@@ -31,10 +34,16 @@ class MainTest(TestCase):
         monkey_patch_queryset()
         # unpatch_queryset()
 
-    def test_01_bulk_create(self):
+    def bulk_create_users(self):
+        User.objects.bulk_create([
+            User(username='test1'),
+            User(username='test2')
+        ])
+
+    def test_bulk_create(self):
         """Ensure that bulk_create triggers pre_bulk_create signal."""
-        tmp = {'pre':False,
-               'post':False}
+        tmp = {'pre': False,
+               'post': False}
 
         @receiver(pre_bulk_create)
         def _set_pre(signal, sender, args):
@@ -46,16 +55,15 @@ class MainTest(TestCase):
             self.assertEqual(sender, User)
             tmp['post'] = True
 
-        User.objects.bulk_create([User(username='test1'),
-                                  User(username='test2')])
+        self.bulk_create_users()
 
         self.assertTrue(tmp['pre'], msg='pre_bulk_create not called')
         self.assertTrue(tmp['post'], msg='post_bulk_create not called')
 
-    def test_01_bulk_create_save(self):
+    def test_bulk_create_save(self):
         """Check that bulk_create does not trigger pre_save signal."""
-        tmp = {'pre':False,
-               'post':False}
+        tmp = {'pre': False,
+               'post': False}
 
         @receiver(pre_save)
         def _set_pre(sender, instance, *args, **kwargs):
@@ -67,16 +75,22 @@ class MainTest(TestCase):
             self.assertEqual(sender, User)
             tmp['post'] = True
 
-        User.objects.bulk_create([User(username='test1'),
-                                  User(username='test2')])
+        self.bulk_create_users()
 
         self.assertFalse(tmp['pre'], msg='pre_save was called')
         self.assertFalse(tmp['post'], msg='post_save was called')
 
-    def test_02_delete(self):
+    @parameterized.expand([
+        [True, True, True],
+        [False, True, True],
+    ])
+    def test_delete(self, bulk_create, pre_ok, post_ok):
         """Ensure that queryset delete triggers qs_pre_delete signal."""
-        tmp = {'pre':False,
-               'post':False}
+        if bulk_create:
+            self.bulk_create_users()
+
+        tmp = {'pre': False,
+               'post': False}
 
         @receiver(qs_pre_delete)
         def _set_pre(signal, sender, args):
@@ -88,17 +102,23 @@ class MainTest(TestCase):
             self.assertEqual(sender, User)
             tmp['post'] = True
 
-        self.test_01_bulk_create()
         users = User.objects.all()
         users.delete()
 
-        self.assertTrue(tmp['pre'], msg='qs_pre_delete not called')
-        self.assertTrue(tmp['post'], msg='qs_post_delete not called')
+        self.assertEqual(tmp['pre'], pre_ok, msg='qs_pre_delete not called')
+        self.assertEqual(tmp['post'], post_ok, msg='qs_post_delete not called')
 
-    def test_02_delete_delete(self):
+    @parameterized.expand([
+        [True, True, True],
+        [False, False, False],
+    ])
+    def test_delete_delete(self, bulk_create, pre_ok, post_ok):
         """Ensure that queryset delete triggers pre_delete signal."""
-        tmp = {'pre':False,
-               'post':False}
+        if bulk_create:
+            self.bulk_create_users()
+
+        tmp = {'pre': False,
+               'post': False}
 
         @receiver(pre_delete)
         def _set_pre(sender, instance, *args, **kwargs):
@@ -110,18 +130,23 @@ class MainTest(TestCase):
             self.assertEqual(sender, User)
             tmp['post'] = True
 
-        self.test_01_bulk_create()
         users = User.objects.all()
         users.delete()
 
-        self.assertTrue(tmp['pre'], msg='pre_delete not called')
-        self.assertTrue(tmp['post'], msg='post_delete not called')
+        self.assertEqual(tmp['pre'], pre_ok, msg='pre_delete not called')
+        self.assertEqual(tmp['post'], post_ok, msg='post_delete not called')
 
-    # TODO: Test get part of get_or_create
-    def test_03_get_or_create(self):
+    @parameterized.expand([
+        [True, True, True],
+        [False, True, True],
+    ])
+    def test_get_or_create(self, precreate, pre_ok, post_ok):
         """Ensure that get_or_create triggers pre_get_or_create signal."""
-        tmp = {'pre':False,
-               'post':False}
+        if precreate:
+            User.objects.create(username='test')
+
+        tmp = {'pre': False,
+               'post': False}
 
         @receiver(pre_get_or_create)
         def _set_pre(signal, sender, args):
@@ -135,14 +160,20 @@ class MainTest(TestCase):
 
         users = User.objects.get_or_create(username='test')
 
-        self.assertTrue(tmp['pre'], msg='pre_get_or_create not called')
-        self.assertTrue(tmp['post'], msg='post_get_or_create not called')
+        self.assertEqual(tmp['pre'], pre_ok, msg='pre_get_or_create not called')
+        self.assertEqual(tmp['post'], post_ok, msg='post_get_or_create not called')
 
-    # TODO: Test get part of get_or_create
-    def test_03_get_or_create_save(self):
+    @parameterized.expand([
+        [True, False, False],
+        [False, True, True],
+    ])
+    def test_get_or_create_save(self, precreate, pre_ok, post_ok):
         """Ensure that get_or_create triggers pre_save signal."""
-        tmp = {'pre':False,
-               'post':False}
+        if precreate:
+            User.objects.create(username='test')
+
+        tmp = {'pre': False,
+               'post': False}
 
         @receiver(pre_save)
         def _set_pre(sender, instance, *args, **kwargs):
@@ -156,14 +187,20 @@ class MainTest(TestCase):
 
         users = User.objects.get_or_create(username='test')
 
-        self.assertTrue(tmp['pre'], msg='pre_save not called')
-        self.assertTrue(tmp['post'], msg='post_save not called')
+        self.assertEqual(tmp['pre'], pre_ok, msg='pre_save not called')
+        self.assertEqual(tmp['post'], post_ok, msg='post_save not called')
 
-    # TODO: Test update part of update_or_create
-    def test_04_update_or_create(self):
+    @parameterized.expand([
+        [True, True, True],
+        [False, True, True],
+    ])
+    def test_update_or_create(self, precreate, pre_ok, post_ok):
         """Ensure that update_or_create triggers pre_update_or_create signal."""
-        tmp = {'pre':False,
-               'post':False}
+        if precreate:
+            User.objects.create(username='test')
+
+        tmp = {'pre': False,
+               'post': False}
 
         @receiver(pre_update_or_create)
         def _set_pre(signal, sender, args):
@@ -177,14 +214,20 @@ class MainTest(TestCase):
 
         users = User.objects.update_or_create(username='test')
 
-        self.assertTrue(tmp['pre'], msg='pre_update_or_create not called')
-        self.assertTrue(tmp['post'], msg='post_update_or_create not called')
+        self.assertEqual(tmp['pre'], pre_ok, msg='pre_update_or_create not called')
+        self.assertEqual(tmp['post'], post_ok, msg='post_update_or_create not called')
 
-    # TODO: Test update part of update_or_create
-    def test_04_update_or_create_save(self):
+    @parameterized.expand([
+        [True, True, True],
+        [False, True, True],
+    ])
+    def test_update_or_create_save(self, precreate, pre_ok, post_ok):
         """Ensure that update_or_create triggers pre_save signal."""
-        tmp = {'pre':False,
-               'post':False}
+        if precreate:
+            User.objects.create(username='test')
+
+        tmp = {'pre': False,
+               'post': False}
 
         @receiver(pre_save)
         def _set_pre(sender, instance, *args, **kwargs):
@@ -198,13 +241,20 @@ class MainTest(TestCase):
 
         users = User.objects.update_or_create(username='test')
 
-        self.assertTrue(tmp['pre'], msg='pre_save not called')
-        self.assertTrue(tmp['post'], msg='post_save not called')
+        self.assertEqual(tmp['pre'], pre_ok, msg='pre_save not called')
+        self.assertEqual(tmp['post'], post_ok, msg='post_save not called')
 
-    def test_05_update(self):
+    @parameterized.expand([
+        [True, True, True],
+        [False, True, True],
+    ])
+    def test_update(self, bulk_create, pre_ok, post_ok):
         """Ensure that queryset update triggers pre_update signal."""
-        tmp = {'pre':False,
-               'post':False}
+        if bulk_create:
+            self.bulk_create_users()
+
+        tmp = {'pre': False,
+               'post': False}
 
         @receiver(pre_update)
         def _set_pre(signal, sender, args):
@@ -216,17 +266,23 @@ class MainTest(TestCase):
             self.assertEqual(sender, User)
             tmp['post'] = True
 
-        self.test_01_bulk_create()
         users = User.objects.all()
         users.update(last_name='Erone')
 
-        self.assertTrue(tmp['pre'], msg='pre_update not called')
-        self.assertTrue(tmp['post'], msg='post_update not called')
+        self.assertEqual(tmp['pre'], pre_ok, msg='pre_update not called')
+        self.assertEqual(tmp['post'], post_ok, msg='post_update not called')
 
-    def test_05_update_save(self):
+    @parameterized.expand([
+        [True, False, False],
+        [False, False, False],
+    ])
+    def test_update_save(self, bulk_create, pre_ok, post_ok):
         """Ensure that queryset update triggers pre_save signal."""
-        tmp = {'pre':False,
-               'post':False}
+        if bulk_create:
+            self.bulk_create_users()
+
+        tmp = {'pre': False,
+               'post': False}
 
         @receiver(pre_save)
         def _set_pre(sender, instance, *args, **kwargs):
@@ -238,9 +294,8 @@ class MainTest(TestCase):
             self.assertEqual(sender, User)
             tmp['post'] = True
 
-        self.test_01_bulk_create()
         users = User.objects.all()
         users.update(last_name='Erone')
 
-        self.assertFalse(tmp['pre'], msg='pre_save was called')
-        self.assertFalse(tmp['post'], msg='post_save was called')
+        self.assertEqual(tmp['pre'], pre_ok, msg='pre_save was called')
+        self.assertEqual(tmp['post'], post_ok, msg='post_save was called')

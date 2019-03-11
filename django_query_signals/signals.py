@@ -97,4 +97,7 @@ def monkey_patch_queryset():
 def unpatch_queryset():
     methods = ['bulk_create', 'get_or_create', 'update_or_create', 'delete', 'update']
     for method in methods:
-        setattr(QuerySet, method, getattr(QuerySet, 'old_' + method))
+        try:
+            setattr(QuerySet, method, getattr(QuerySet, 'old_' + method))
+        except AttributeError:
+            pass
