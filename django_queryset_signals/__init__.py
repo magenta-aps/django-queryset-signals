@@ -6,6 +6,7 @@ from django.dispatch import receiver
 from . import __info__
 from .signals import monkey_patch_queryset
 from .signals import unpatch_queryset
+from .signals import SignalQuerySet
 from .signals import (pre_update, post_update,
                       pre_delete, post_delete,
                       pre_bulk_create, post_bulk_create,

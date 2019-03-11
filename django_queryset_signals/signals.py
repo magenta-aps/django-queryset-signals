@@ -6,81 +6,91 @@ from django.db.models.query import QuerySet
 from django.dispatch import Signal
 from django.conf import settings
 
-# pylint: disable=invalid-name
-pre_delete = Signal(providing_args=["args"])
-post_delete = Signal(providing_args=["args"])
-pre_update = Signal(providing_args=["args"])
-post_update = Signal(providing_args=["args"])
-pre_bulk_create = Signal(providing_args=["args"])
-post_bulk_create = Signal(providing_args=["args"])
-pre_get_or_create = Signal(providing_args=["args"])
-post_get_or_create = Signal(providing_args=["args"])
-pre_update_or_create = Signal(providing_args=["args"])
-post_update_or_create = Signal(providing_args=["args"])
+# TODO: Consider providing results into post signals
+# TODO: Consider pk list versions
 
-
-METHODS = {'bulk_create':QuerySet.bulk_create,
-           'get_or_create':QuerySet.get_or_create,
-           'update_or_create':QuerySet.update_or_create,
-           'delete':QuerySet.delete,
-           'update':QuerySet.update}
-
+pre_bulk_create = Signal(providing_args=["queryset", "objs", "batch_size"])
+post_bulk_create = Signal(providing_args=["queryset", "objs", "batch_size"])
 
 def _bulk_create(self, objs, batch_size=None):
-    _ = {'self':self, 'objs':objs, 'batch_size':batch_size,
-         'method':'bulk_create'}
-    pre_bulk_create.send(sender=self.model, args=_)
-    _['return'] = METHODS['bulk_create'](_['self'], _['objs'], _['batch_size'])
-    post_bulk_create.send(sender=self.model, args=_)
-    return _['return']
+    pre_bulk_create.send(sender=self.model, queryset=self, objs=objs, batch_size=batch_size)
+    return_val = getattr(self, 'raw_bulk_create')(objs=objs, batch_size=batch_size)
+    post_bulk_create.send(sender=self.model, queryset=self, objs=objs, batch_size=batch_size)
+    return return_val
 
+
+pre_get_or_create = Signal(providing_args=["queryset", "defaults", "kwargs"])
+post_get_or_create = Signal(providing_args=["queryset", "defaults", "kwargs"])
 
 def _get_or_create(self, defaults=None, **kwargs):
-    _ = {'self':self, 'defaults':defaults, 'kwargs':kwargs,
-         'method':'get_or_create'}
-    pre_get_or_create.send(sender=self.model, args=_)
-    _['return'] = METHODS['get_or_create'](
-                                        _['self'], _['defaults'], **_['kwargs'])
-    post_get_or_create.send(sender=self.model, args=_)
-    return _['return']
+    pre_get_or_create.send(sender=self.model, queryset=self, defaults=defaults, **kwargs)
+    return_val = getattr(self, 'raw_get_or_create')(defaults=defaults, **kwargs)
+    post_get_or_create.send(sender=self.model, queryset=self, defaults=defaults, **kwargs)
+    return return_val
 
+
+pre_update_or_create = Signal(providing_args=["queryset", "defaults", "kwargs"])
+post_update_or_create = Signal(providing_args=["queryset", "defaults", "kwargs"])
 
 def _update_or_create(self, defaults=None, **kwargs):
-    _ = {'self':self, 'defaults':defaults, 'kwargs':kwargs,
-         'method':'update_or_create'}
-    pre_update_or_create.send(sender=self.model, args=_)
-    _['return'] = METHODS['update_or_create'](
-                                        _['self'], _['defaults'], **_['kwargs'])
-    post_update_or_create.send(sender=self.model, args=_)
-    return _['return']
+    pre_update_or_create.send(sender=self.model, queryset=self, defaults=defaults, **kwargs)
+    return_val = getattr(self, 'raw_update_or_create')(defaults=defaults, **kwargs)
+    post_update_or_create.send(sender=self.model, queryset=self, defaults=defaults, **kwargs)
+    return return_val
 
+
+pre_delete = Signal(providing_args=["queryset"])
+post_delete = Signal(providing_args=["queryset"])
 
 def _delete(self):
-    _ = {'self':self, 'method':'delete'}
-    pre_delete.send(sender=self.model, args=_)
-    _['return'] = METHODS['delete'](_['self'])
-    post_delete.send(sender=self.model, args=_)
-    return _['return']
+    pre_delete.send(sender=self.model, queryset=self)
+    return_val = getattr(self, 'raw_delete')()
+    post_delete.send(sender=self.model, queryset=self)
+    return return_val
 
+
+pre_update = Signal(providing_args=["queryset", "kwargs"])
+post_update = Signal(providing_args=["queryset", "kwargs"])
 
 def _update(self, **kwargs):
-    _ = {'self':self, 'kwargs':kwargs, 'method':'update'}
-    pre_update.send(sender=self.model, args=_)
-    _['return'] = METHODS['update'](_['self'], **_['kwargs'])
-    post_update.send(sender=self.model, args=_)
-    return _['return']
+    pre_update.send(sender=self.model, queryset=self, **kwargs)
+    return_val = getattr(self, 'raw_update')(**kwargs)
+    post_update.send(sender=self.model, queryset=self, **kwargs)
+    return return_val
 
 
 class SignalQuerySet(QuerySet):
     # https://docs.djangoproject.com/en/1.11/_modules/django/db/models/query/#QuerySet
+
     def bulk_create(self, objs, batch_size=None):
-        return _bulk_create(self, objs, batch_size)
+        pre_bulk_create.send(sender=self.model, queryset=self, objs=objs, batch_size=batch_size)
+        return_val = super(SignalQuerySet, self).bulk_create(objs=objs, batch_size=batch_size)
+        post_bulk_create.send(sender=self.model, queryset=self, objs=objs, batch_size=batch_size)
+        return return_val
+
+    def get_or_create(self, defaults=None, **kwargs):
+        pre_get_or_create.send(sender=self.model, queryset=self, defaults=defaults, **kwargs)
+        return_val = super(SignalQuerySet, self).get_or_create(defaults=defaults, **kwargs)
+        post_get_or_create.send(sender=self.model, queryset=self, defaults=defaults, **kwargs)
+        return return_val
+
+    def update_or_create(self, defaults=None, **kwargs):
+        pre_update_or_create.send(sender=self.model, queryset=self, defaults=defaults, **kwargs)
+        return_val = super(SignalQuerySet, self).update_or_create(defaults=defaults, **kwargs)
+        post_update_or_create.send(sender=self.model, queryset=self, defaults=defaults, **kwargs)
+        return return_val
 
     def delete(self):
-        return _delete(self)
+        pre_delete.send(sender=self.model, queryset=self)
+        return_val = super(SignalQuerySet, self).delete()
+        post_delete.send(sender=self.model, queryset=self)
+        return return_val
 
     def update(self, **kwargs):
-        return _update(**kwargs)
+        pre_update.send(sender=self.model, queryset=self, **kwargs)
+        return_val = super(SignalQuerySet, self).update(**kwargs)
+        post_update.send(sender=self.model, queryset=self, **kwargs)
+        return return_val
 
 
 def monkey_patch_queryset():
@@ -93,8 +103,8 @@ def monkey_patch_queryset():
         'update': _update,
     }
     for method in methods:
-        if hasattr(QuerySet, 'old_' + method) == False:
-            setattr(QuerySet, 'old_' + method, getattr(QuerySet, method))
+        if hasattr(QuerySet, 'raw_' + method) == False:
+            setattr(QuerySet, 'raw_' + method, getattr(QuerySet, method))
             setattr(QuerySet, method, methods[method])
 
 
@@ -107,7 +117,7 @@ def unpatch_queryset():
     methods = ['bulk_create', 'get_or_create', 'update_or_create', 'delete', 'update']
     for method in methods:
         try:
-            setattr(QuerySet, method, getattr(QuerySet, 'old_' + method))
-            delattr(QuerySet, 'old_' + method)
+            setattr(QuerySet, method, getattr(QuerySet, 'raw_' + method))
+            delattr(QuerySet, 'raw_' + method)
         except AttributeError:
             pass
