@@ -1,6 +1,3 @@
-"""
-Application Init
-"""
 import os
 
 from django.apps import AppConfig as _APPCFG
@@ -25,11 +22,4 @@ def _ready(self):
 
 _ = globals()
 
-_[__info__.LABELS['class']] = \
-    type(__info__. LABELS['class'], (_APPCFG,),
-         {'ready':_ready, 'name':__info__.LABELS['name'],
-          'verbose_name':__info__.LABELS['verbose_name']})
-
-_['default_app_config'] = __info__.LABELS['path'] \
-                          + '.' + __info__.LABELS['class']
-
+name = "django_queryset_signals"

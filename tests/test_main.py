@@ -11,7 +11,7 @@ from django.db.models.signals import (
 )
 
 # TODO: Deal with delete signal handler name crash
-from django_query_signals import (
+from django_queryset_signals import (
     receiver,
     monkey_patch_queryset, unpatch_queryset,
     pre_bulk_create, post_bulk_create,

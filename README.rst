@@ -1,6 +1,6 @@
-####################
-Django Query Signals
-####################
+#######################
+Django Queryset Signals
+#######################
 
 Who made it?
 ============
@@ -35,9 +35,9 @@ How do I install it?
 ====================
 .. sourcecode:: shell
 
-  pip install django-query-signals
+  pip install django-queryset-signals
 
-And then add 'django_query_signals' to your installed apps.
+And then add 'django_queryset_signals' to your installed apps.
 
 How do I use it?
 ================

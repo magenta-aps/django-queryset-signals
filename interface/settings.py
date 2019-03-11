@@ -32,7 +32,7 @@ ALLOWED_HOSTS = []
 
 
 INSTALLED_APPS = [
-    'django_query_signals',
+    'django_queryset_signals',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
