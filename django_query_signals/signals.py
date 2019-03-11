@@ -18,11 +18,13 @@ post_get_or_create = Signal(providing_args=["args"])
 pre_update_or_create = Signal(providing_args=["args"])
 post_update_or_create = Signal(providing_args=["args"])
 
+
 METHODS = {'bulk_create':QuerySet.bulk_create,
            'get_or_create':QuerySet.get_or_create,
            'update_or_create':QuerySet.update_or_create,
            'delete':QuerySet.delete,
            'update':QuerySet.update}
+
 
 def _bulk_create(self, objs, batch_size=None):
     _ = {'self':self, 'objs':objs, 'batch_size':batch_size,
@@ -31,6 +33,7 @@ def _bulk_create(self, objs, batch_size=None):
     _['return'] = METHODS['bulk_create'](_['self'], _['objs'], _['batch_size'])
     post_bulk_create.send(sender=self.model, args=_)
     return _['return']
+
 
 def _get_or_create(self, defaults=None, **kwargs):
     _ = {'self':self, 'defaults':defaults, 'kwargs':kwargs,
@@ -41,6 +44,7 @@ def _get_or_create(self, defaults=None, **kwargs):
     post_get_or_create.send(sender=self.model, args=_)
     return _['return']
 
+
 def _update_or_create(self, defaults=None, **kwargs):
     _ = {'self':self, 'defaults':defaults, 'kwargs':kwargs,
          'method':'update_or_create'}
@@ -50,12 +54,14 @@ def _update_or_create(self, defaults=None, **kwargs):
     post_update_or_create.send(sender=self.model, args=_)
     return _['return']
 
+
 def _delete(self):
     _ = {'self':self, 'method':'delete'}
     pre_delete.send(sender=self.model, args=_)
     _['return'] = METHODS['delete'](_['self'])
     post_delete.send(sender=self.model, args=_)
     return _['return']
+
 
 def _update(self, **kwargs):
     _ = {'self':self, 'kwargs':kwargs, 'method':'update'}
@@ -78,26 +84,30 @@ class SignalQuerySet(QuerySet):
 
 
 def monkey_patch_queryset():
-    QuerySet.old_bulk_create = QuerySet.bulk_create
-    QuerySet.bulk_create = _bulk_create
-
-    QuerySet.old_get_or_create = QuerySet.get_or_create
-    QuerySet.get_or_create = _get_or_create
-
-    QuerySet.old_update_or_create = QuerySet.update_or_create
-    QuerySet.update_or_create = _update_or_create
-
-    QuerySet.old_delete = QuerySet.delete
-    QuerySet.delete = _delete
-
-    QuerySet.old_update = QuerySet.update
-    QuerySet.update = _update
+    """Monkey patch queryset, thus affecting all querysets."""
+    methods = {
+        'bulk_create': _bulk_create,
+        'get_or_create': _get_or_create,
+        'update_or_create': _update_or_create,
+        'delete': _delete,
+        'update': _update,
+    }
+    for method in methods:
+        if hasattr(QuerySet, 'old_' + method) == False:
+            setattr(QuerySet, 'old_' + method, getattr(QuerySet, method))
+            setattr(QuerySet, method, methods[method])
 
 
 def unpatch_queryset():
+    """Un-monkey patch querysets, thus returning all querysets to normal.
+
+    Note:
+        There may be caching, and such which delays this operation from taking effect.
+    """
     methods = ['bulk_create', 'get_or_create', 'update_or_create', 'delete', 'update']
     for method in methods:
         try:
             setattr(QuerySet, method, getattr(QuerySet, 'old_' + method))
+            delattr(QuerySet, 'old_' + method)
         except AttributeError:
             pass

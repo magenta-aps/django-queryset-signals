@@ -4,6 +4,7 @@ from django.test import (
     override_settings
 )
 from django.contrib.auth.models import User
+from django.db.models.query import QuerySet
 from django.db.models.signals import (
     pre_save, post_save,
     pre_delete, post_delete
@@ -27,275 +28,129 @@ from parameterized import parameterized, parameterized_class
 
 
 # pylint: disable=unused-variable, unused-argument
-class MainTest(TestCase):
+class MonkeyPatchTest(TestCase):
     """Test that signal methods are actually called."""
 
     def setUp(self):
-        monkey_patch_queryset()
+        pass
+        # monkey_patch_queryset()
         # unpatch_queryset()
 
+    def test_monkey(self):
+        pre_normal_method = QuerySet.bulk_create
+        monkey_patch_queryset()
+        pre_monkey_method = QuerySet.bulk_create
+        unpatch_queryset()
+        post_normal_method = QuerySet.bulk_create
+        monkey_patch_queryset()
+        post_monkey_method = QuerySet.bulk_create
+        unpatch_queryset()
+
+        self.assertEqual(pre_normal_method, post_normal_method)
+        self.assertEqual(pre_monkey_method, post_monkey_method)
+        self.assertNotEqual(pre_monkey_method, pre_normal_method)
+
+    # ---------------- #
+    # Helper functions #
+    # ---------------- #
     def bulk_create_users(self):
         User.objects.bulk_create([
             User(username='test1'),
             User(username='test2')
         ])
 
-    def test_bulk_create(self):
-        """Ensure that bulk_create triggers pre_bulk_create signal."""
-        tmp = {'pre': False,
-               'post': False}
-
-        @receiver(pre_bulk_create)
-        def _set_pre(signal, sender, args):
-            self.assertEqual(sender, User)
-            tmp['pre'] = True
-
-        @receiver(post_bulk_create)
-        def _set_post(signal, sender, args):
-            self.assertEqual(sender, User)
-            tmp['post'] = True
-
-        self.bulk_create_users()
-
-        self.assertTrue(tmp['pre'], msg='pre_bulk_create not called')
-        self.assertTrue(tmp['post'], msg='post_bulk_create not called')
-
-    def test_bulk_create_save(self):
-        """Check that bulk_create does not trigger pre_save signal."""
-        tmp = {'pre': False,
-               'post': False}
-
-        @receiver(pre_save)
-        def _set_pre(sender, instance, *args, **kwargs):
-            self.assertEqual(sender, User)
-            tmp['pre'] = True
-
-        @receiver(post_save)
-        def _set_post(sender, instance, *args, **kwargs):
-            self.assertEqual(sender, User)
-            tmp['post'] = True
-
-        self.bulk_create_users()
-
-        self.assertFalse(tmp['pre'], msg='pre_save was called')
-        self.assertFalse(tmp['post'], msg='post_save was called')
-
-    @parameterized.expand([
-        [True, True, True],
-        [False, True, True],
-    ])
-    def test_delete(self, bulk_create, pre_ok, post_ok):
-        """Ensure that queryset delete triggers qs_pre_delete signal."""
-        if bulk_create:
-            self.bulk_create_users()
-
-        tmp = {'pre': False,
-               'post': False}
-
-        @receiver(qs_pre_delete)
-        def _set_pre(signal, sender, args):
-            self.assertEqual(sender, User)
-            tmp['pre'] = True
-
-        @receiver(qs_post_delete)
-        def _set_post(signal, sender, args):
-            self.assertEqual(sender, User)
-            tmp['post'] = True
-
+    def delete_users(self):
         users = User.objects.all()
         users.delete()
 
-        self.assertEqual(tmp['pre'], pre_ok, msg='qs_pre_delete not called')
-        self.assertEqual(tmp['post'], post_ok, msg='qs_post_delete not called')
+    def get_or_create_user(self):
+        User.objects.get_or_create(username='test')
 
-    @parameterized.expand([
-        [True, True, True],
-        [False, False, False],
-    ])
-    def test_delete_delete(self, bulk_create, pre_ok, post_ok):
-        """Ensure that queryset delete triggers pre_delete signal."""
-        if bulk_create:
-            self.bulk_create_users()
+    def update_or_create_user(self):
+        User.objects.update_or_create(username='test')
 
-        tmp = {'pre': False,
-               'post': False}
-
-        @receiver(pre_delete)
-        def _set_pre(sender, instance, *args, **kwargs):
-            self.assertEqual(sender, User)
-            tmp['pre'] = True
-
-        @receiver(post_delete)
-        def _set_post(sender, instance, *args, **kwargs):
-            self.assertEqual(sender, User)
-            tmp['post'] = True
-
-        users = User.objects.all()
-        users.delete()
-
-        self.assertEqual(tmp['pre'], pre_ok, msg='pre_delete not called')
-        self.assertEqual(tmp['post'], post_ok, msg='post_delete not called')
-
-    @parameterized.expand([
-        [True, True, True],
-        [False, True, True],
-    ])
-    def test_get_or_create(self, precreate, pre_ok, post_ok):
-        """Ensure that get_or_create triggers pre_get_or_create signal."""
-        if precreate:
-            User.objects.create(username='test')
-
-        tmp = {'pre': False,
-               'post': False}
-
-        @receiver(pre_get_or_create)
-        def _set_pre(signal, sender, args):
-            self.assertEqual(sender, User)
-            tmp['pre'] = True
-
-        @receiver(post_get_or_create)
-        def _set_post(signal, sender, args):
-            self.assertEqual(sender, User)
-            tmp['post'] = True
-
-        users = User.objects.get_or_create(username='test')
-
-        self.assertEqual(tmp['pre'], pre_ok, msg='pre_get_or_create not called')
-        self.assertEqual(tmp['post'], post_ok, msg='post_get_or_create not called')
-
-    @parameterized.expand([
-        [True, False, False],
-        [False, True, True],
-    ])
-    def test_get_or_create_save(self, precreate, pre_ok, post_ok):
-        """Ensure that get_or_create triggers pre_save signal."""
-        if precreate:
-            User.objects.create(username='test')
-
-        tmp = {'pre': False,
-               'post': False}
-
-        @receiver(pre_save)
-        def _set_pre(sender, instance, *args, **kwargs):
-            self.assertEqual(sender, User)
-            tmp['pre'] = True
-
-        @receiver(post_save)
-        def _set_post(sender, instance, *args, **kwargs):
-            self.assertEqual(sender, User)
-            tmp['post'] = True
-
-        users = User.objects.get_or_create(username='test')
-
-        self.assertEqual(tmp['pre'], pre_ok, msg='pre_save not called')
-        self.assertEqual(tmp['post'], post_ok, msg='post_save not called')
-
-    @parameterized.expand([
-        [True, True, True],
-        [False, True, True],
-    ])
-    def test_update_or_create(self, precreate, pre_ok, post_ok):
-        """Ensure that update_or_create triggers pre_update_or_create signal."""
-        if precreate:
-            User.objects.create(username='test')
-
-        tmp = {'pre': False,
-               'post': False}
-
-        @receiver(pre_update_or_create)
-        def _set_pre(signal, sender, args):
-            self.assertEqual(sender, User)
-            tmp['pre'] = True
-
-        @receiver(post_update_or_create)
-        def _set_post(signal, sender, args):
-            self.assertEqual(sender, User)
-            tmp['post'] = True
-
-        users = User.objects.update_or_create(username='test')
-
-        self.assertEqual(tmp['pre'], pre_ok, msg='pre_update_or_create not called')
-        self.assertEqual(tmp['post'], post_ok, msg='post_update_or_create not called')
-
-    @parameterized.expand([
-        [True, True, True],
-        [False, True, True],
-    ])
-    def test_update_or_create_save(self, precreate, pre_ok, post_ok):
-        """Ensure that update_or_create triggers pre_save signal."""
-        if precreate:
-            User.objects.create(username='test')
-
-        tmp = {'pre': False,
-               'post': False}
-
-        @receiver(pre_save)
-        def _set_pre(sender, instance, *args, **kwargs):
-            self.assertEqual(sender, User)
-            tmp['pre'] = True
-
-        @receiver(post_save)
-        def _set_post(sender, instance, *args, **kwargs):
-            self.assertEqual(sender, User)
-            tmp['post'] = True
-
-        users = User.objects.update_or_create(username='test')
-
-        self.assertEqual(tmp['pre'], pre_ok, msg='pre_save not called')
-        self.assertEqual(tmp['post'], post_ok, msg='post_save not called')
-
-    @parameterized.expand([
-        [True, True, True],
-        [False, True, True],
-    ])
-    def test_update(self, bulk_create, pre_ok, post_ok):
-        """Ensure that queryset update triggers pre_update signal."""
-        if bulk_create:
-            self.bulk_create_users()
-
-        tmp = {'pre': False,
-               'post': False}
-
-        @receiver(pre_update)
-        def _set_pre(signal, sender, args):
-            self.assertEqual(sender, User)
-            tmp['pre'] = True
-
-        @receiver(post_update)
-        def _set_post(signal, sender, args):
-            self.assertEqual(sender, User)
-            tmp['post'] = True
-
+    def update_users(self):
         users = User.objects.all()
         users.update(last_name='Erone')
 
-        self.assertEqual(tmp['pre'], pre_ok, msg='pre_update not called')
-        self.assertEqual(tmp['post'], post_ok, msg='post_update not called')
-
+    # ----------------- #
+    # Testing functions #
+    # ----------------- #
     @parameterized.expand([
-        [True, False, False],
-        [False, False, False],
+        # Action = bulk_create_users
+        # bulk_create signals triggered
+        [bulk_create_users, pre_bulk_create, True],
+        [bulk_create_users, post_bulk_create, True],
+        # save signals not triggered
+        [bulk_create_users, pre_save, False],
+        [bulk_create_users, post_save, False],
+
+        # Action = delete_users
+        # qs_delete delete signals triggered
+        [delete_users, qs_pre_delete, True],
+        [delete_users, qs_post_delete, True],
+        [delete_users, qs_pre_delete, True, bulk_create_users],
+        [delete_users, qs_post_delete, True, bulk_create_users],
+        # delete signals triggered depending on data
+        # 
+        [delete_users, pre_delete, False],
+        [delete_users, post_delete, False],
+        [delete_users, pre_delete, True, bulk_create_users],
+        [delete_users, post_delete, True, bulk_create_users],
+
+        # Action = get_or_create_user
+        # get_or_create signals triggered
+        [get_or_create_user, pre_get_or_create, True],
+        [get_or_create_user, post_get_or_create, True],
+        [get_or_create_user, pre_get_or_create, True, get_or_create_user],
+        [get_or_create_user, post_get_or_create, True, get_or_create_user],
+        # save signals triggered depending on data
+        # - only triggered when creating
+        [get_or_create_user, pre_save, True],
+        [get_or_create_user, post_save, True],
+        [get_or_create_user, pre_save, False, get_or_create_user],
+        [get_or_create_user, post_save, False, get_or_create_user],
+
+        # Action = update_or_create_user
+        # update_or_create signals triggered
+        [update_or_create_user, pre_update_or_create, True],
+        [update_or_create_user, post_update_or_create, True],
+        [update_or_create_user, pre_update_or_create, True, update_or_create_user],
+        [update_or_create_user, post_update_or_create, True, update_or_create_user],
+        # save signals triggered
+        [update_or_create_user, pre_save, True],
+        [update_or_create_user, post_save, True],
+        [update_or_create_user, pre_save, True, update_or_create_user],
+        [update_or_create_user, post_save, True, update_or_create_user],
+
+        # Action = update_users
+        # update_or_create signals triggered
+        [update_users, pre_update, True],
+        [update_users, post_update, True],
+        [update_users, pre_update, True, bulk_create_users],
+        [update_users, post_update, True, bulk_create_users],
+        # save signals triggered
+        [update_users, pre_save, False],
+        [update_users, post_save, False],
+        [update_users, pre_save, False, bulk_create_users],
+        [update_users, post_save, False, bulk_create_users],
     ])
-    def test_update_save(self, bulk_create, pre_ok, post_ok):
-        """Ensure that queryset update triggers pre_save signal."""
-        if bulk_create:
-            self.bulk_create_users()
+    # TODO: Add custom function names aka. testcase_func_name=custom_name_func
+    def test_signals(self, trigger, signal, expected, pre_task = None):
+        """Ensure that signal behaves as expected."""
+        monkey_patch_queryset()
 
-        tmp = {'pre': False,
-               'post': False}
+        if pre_task:
+            pre_task(self)
 
-        @receiver(pre_save)
-        def _set_pre(sender, instance, *args, **kwargs):
+        tmp = {'signal': False}
+
+        @receiver(signal)
+        def _signal_handler(*args, **kwargs):
+            sender = kwargs['sender']
             self.assertEqual(sender, User)
-            tmp['pre'] = True
+            tmp['signal'] = True
 
-        @receiver(post_save)
-        def _set_pre(sender, instance, *args, **kwargs):
-            self.assertEqual(sender, User)
-            tmp['post'] = True
+        trigger(self)
 
-        users = User.objects.all()
-        users.update(last_name='Erone')
-
-        self.assertEqual(tmp['pre'], pre_ok, msg='pre_save was called')
-        self.assertEqual(tmp['post'], post_ok, msg='post_save was called')
+        self.assertEqual(tmp['signal'], expected)
