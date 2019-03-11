@@ -4,6 +4,7 @@ This module is imported on app ready (see __init__).
 
 from django.db.models.query import QuerySet
 from django.dispatch import Signal
+from django.conf import settings
 
 # pylint: disable=invalid-name
 pre_delete = Signal(providing_args=["args"])
@@ -63,8 +64,37 @@ def _update(self, **kwargs):
     post_update.send(sender=self.model, args=_)
     return _['return']
 
-QuerySet.bulk_create = _bulk_create
-QuerySet.get_or_create = _get_or_create
-QuerySet.update_or_create = _update_or_create
-QuerySet.delete = _delete
-QuerySet.update = _update
+
+class SignalQuerySet(QuerySet):
+    # https://docs.djangoproject.com/en/1.11/_modules/django/db/models/query/#QuerySet
+    def bulk_create(self, objs, batch_size=None):
+        return _bulk_create(self, objs, batch_size)
+
+    def delete(self):
+        return _delete(self)
+
+    def update(self, **kwargs):
+        return _update(**kwargs)
+
+
+def monkey_patch_queryset():
+    QuerySet.old_bulk_create = QuerySet.bulk_create
+    QuerySet.bulk_create = _bulk_create
+
+    QuerySet.old_get_or_create = QuerySet.get_or_create
+    QuerySet.get_or_create = _get_or_create
+
+    QuerySet.old_update_or_create = QuerySet.update_or_create
+    QuerySet.update_or_create = _update_or_create
+
+    QuerySet.old_delete = QuerySet.delete
+    QuerySet.delete = _delete
+
+    QuerySet.old_update = QuerySet.update
+    QuerySet.update = _update
+
+
+def unpatch_queryset():
+    methods = ['bulk_create', 'get_or_create', 'update_or_create', 'delete', 'update']
+    for method in methods:
+        setattr(QuerySet, method, getattr(QuerySet, 'old_' + method))

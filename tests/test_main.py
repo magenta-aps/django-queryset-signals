@@ -1,5 +1,8 @@
 "The main test module."
-from django.test import TestCase
+from django.test import (
+    TestCase,
+    override_settings
+)
 from django.contrib.auth.models import User
 from django.db.models.signals import (
     pre_save, post_save,
@@ -9,6 +12,7 @@ from django.db.models.signals import (
 # TODO: Deal with delete signal handler name crash
 from django_query_signals import (
     receiver,
+    monkey_patch_queryset, unpatch_queryset,
     pre_bulk_create, post_bulk_create,
     pre_delete as qs_pre_delete, post_delete as qs_post_delete,
     pre_get_or_create, post_get_or_create,
@@ -22,6 +26,10 @@ from django_query_signals import (
 # pylint: disable=unused-variable, unused-argument
 class MainTest(TestCase):
     """Test that signal methods are actually called."""
+
+    def setUp(self):
+        monkey_patch_queryset()
+        # unpatch_queryset()
 
     def test_01_bulk_create(self):
         """Ensure that bulk_create triggers pre_bulk_create signal."""
