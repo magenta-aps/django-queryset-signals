@@ -38,16 +38,7 @@ How do I install it?
 
   pip install django-query-signals
 
-
-Adding to Django (using integrator)
------------------------------------
-.. sourcecode:: shell
-
-  >>> import django_integrator
-  >>> django_integrator.add_application('django_query_signals')
-
-If you don't want to use the above, you can just add 'django_query_signals' to
-your installed apps.
+And then add 'django_query_signals' to your installed apps.
 
 How do I use it?
 ================

@@ -14,7 +14,6 @@ URL_DOWNLOAD = URL_MAIN + 'download/' + VERSION + '.zip'
 
 KEYWORDS = [
     'django',
-    'django-integrator'
     ]
 
 CLASSIFIERS = [
@@ -23,7 +22,6 @@ CLASSIFIERS = [
 
 REQUIREMENTS = [
     'Django',
-    'django-integrator',
     ]
 
 LICENSE = 'BSD'

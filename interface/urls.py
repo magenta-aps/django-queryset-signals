@@ -19,8 +19,3 @@ from django.contrib import admin
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
 ]
-
-# Add application urls
-# pylint:disable=wrong-import-position
-import django_integrator
-django_integrator.add_urlpatterns(urlpatterns)
