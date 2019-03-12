@@ -7,9 +7,8 @@ Django Queryset Signals
 
 Who made it?
 ============
-This library was originally developed by [Martin P. Hellwig](https://bitbucket.org/hellwig/)
-at [Bitbucket](https://bitbucket.org/hellwig/django-query-signals).
-If you like this work, Martin notifies that you can repay him by donating.
+This library was originally developed by `Martin P. Hellwig <https://bitbucket.org/hellwig/>`_ at `Bitbucket <https://bitbucket.org/hellwig/django-query-signals>`_.
+If you like this work, Martin notifies that you can repay him by donating via `Paypal <https://www.paypal.me/MartinHellwig>`_ or `Patreon <https://www.patreon.com/hellwig>`_.
 
 
 
