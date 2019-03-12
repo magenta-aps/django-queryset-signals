@@ -1,0 +1,19 @@
+language: python
+# List the versions of Python you'd like to test against
+python:
+  - "2.6"
+  - "2.7"
+  - "3.3"
+  - "3.4"
+  - "3.5"
+  - "3.6"
+  - "3.7"
+# List the versions of Django you'd like to test against
+env:
+  - DJANGO_VERSION=1.11
+install:
+  - pip install -r requirements.txt
+   # Install whatever version of Django that's listed above
+  - pip install -q Django==$DJANGO_VERSION --use-mirrors
+script:
+  - python runtests.py
