@@ -30,6 +30,6 @@ matrix:
 install:
   - pip install -r requirements.txt
    # Install whatever version of Django that's listed above
-  - pip install -q Django==$DJANGO_VERSION
+  - pip install -q Django<=$DJANGO_VERSION
 script:
   - python runtests.py
