@@ -2,6 +2,9 @@
 Django Queryset Signals
 #######################
 
+.. image:: https://travis-ci.org/magenta-aps/django-queryset-signals.svg?branch=master
+    :target: https://travis-ci.org/magenta-aps/django-queryset-signals
+
 Who made it?
 ============
 This library was originally developed by [Martin P. Hellwig](https://bitbucket.org/hellwig/)
