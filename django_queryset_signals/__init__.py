@@ -3,7 +3,6 @@ import os
 from django.apps import AppConfig as _APPCFG
 from django.dispatch import receiver
 
-from . import __info__
 from .signals import monkey_patch_queryset
 from .signals import unpatch_queryset
 from .signals import SignalQuerySet
@@ -19,7 +18,6 @@ from .signals import (
 _ = os.path.abspath(__file__)
 _ = os.path.dirname(_)
 _ = os.path.split(_)[1]
-__info__.LABELS['path'] = _
 
 def _ready(self):
     return _APPCFG.ready(self)
