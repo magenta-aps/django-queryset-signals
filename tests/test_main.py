@@ -15,6 +15,7 @@ from django_queryset_signals import (
     receiver,
     monkey_patch_queryset, unpatch_queryset,
     pre_bulk_create, post_bulk_create,
+    pre_create, post_create,
     pre_delete as qs_pre_delete, post_delete as qs_post_delete,
     pre_get_or_create, post_get_or_create,
     pre_update_or_create, post_update_or_create,
@@ -51,8 +52,12 @@ class TestMonkeyPatching(TestCase):
 
 # pylint: disable=unused-variable, unused-argument
 @parameterized_class([
+    # Test that monkey_patching works for default querysets
     {"model": User, "monkey_patch": True},
+    # Test that our custom signal queryset works
     {"model": SignalUser, "monkey_patch": False},
+    # Test that monkey_patching works for custom signal querysets
+    {"model": SignalUser, "monkey_patch": True},
 ])
 class QuerysetSignalsTest(TestCase):
     """Test that signal methods are actually called."""
@@ -82,9 +87,23 @@ class QuerysetSignalsTest(TestCase):
     def update_or_create_user(self):
         self.model.objects.update_or_create(username='test')
 
+    def create_user(self):
+        self.model.objects.create(username='test')
+
     def update_users(self):
         users = self.model.objects.all()
         users.update(last_name='Erone')
+
+    def delete_user(self):
+        user = self.model.objects.create(username='test')
+        user.delete()
+
+#    def save_user(self):
+#        self.model(username='test1').save()
+#
+#    def resave_user(self):
+#        user = self.model.objects.create(username='test')
+#        user.save()
 
     # ----------------- #
     # Testing functions #
@@ -105,11 +124,22 @@ class QuerysetSignalsTest(TestCase):
         [delete_users, qs_pre_delete, True, bulk_create_users],
         [delete_users, qs_post_delete, True, bulk_create_users],
         # delete signals triggered depending on data
-        # 
         [delete_users, pre_delete, False],
         [delete_users, post_delete, False],
         [delete_users, pre_delete, True, bulk_create_users],
         [delete_users, post_delete, True, bulk_create_users],
+
+        # Action = delete_user
+        # qs_delete delete signals triggered
+        [delete_user, qs_pre_delete, True],
+        [delete_user, qs_post_delete, True],
+        [delete_user, qs_pre_delete, True, bulk_create_users],
+        [delete_user, qs_post_delete, True, bulk_create_users],
+        # delete signals triggered depending on data
+        [delete_user, pre_delete, True],
+        [delete_user, post_delete, True],
+        [delete_user, pre_delete, True, bulk_create_users],
+        [delete_user, post_delete, True, bulk_create_users],
 
         # Action = get_or_create_user
         # get_or_create signals triggered
@@ -135,6 +165,14 @@ class QuerysetSignalsTest(TestCase):
         [update_or_create_user, post_save, True],
         [update_or_create_user, pre_save, True, update_or_create_user],
         [update_or_create_user, post_save, True, update_or_create_user],
+
+        # Action = create_user
+        # update_or_create signals triggered
+        [create_user, pre_create, True],
+        [create_user, post_create, True],
+        # save signals triggered
+        [create_user, pre_save, True],
+        [create_user, post_save, True],
 
         # Action = update_users
         # update_or_create signals triggered

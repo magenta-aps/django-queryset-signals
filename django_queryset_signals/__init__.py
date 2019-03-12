@@ -7,11 +7,14 @@ from . import __info__
 from .signals import monkey_patch_queryset
 from .signals import unpatch_queryset
 from .signals import SignalQuerySet
-from .signals import (pre_update, post_update,
-                      pre_delete, post_delete,
-                      pre_bulk_create, post_bulk_create,
-                      pre_get_or_create, post_get_or_create,
-                      pre_update_or_create, post_update_or_create)
+from .signals import (
+    pre_create, post_create,
+    pre_update, post_update,
+    pre_delete, post_delete,
+    pre_bulk_create, post_bulk_create,
+    pre_get_or_create, post_get_or_create,
+    pre_update_or_create, post_update_or_create
+)
 
 _ = os.path.abspath(__file__)
 _ = os.path.dirname(_)
