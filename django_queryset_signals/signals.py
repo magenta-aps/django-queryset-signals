@@ -101,8 +101,8 @@ def pre_save_to_qs_signals(sender, instance, *args, **kwargs):
     else:
         # Does exist
         pass
-    print args
-    print kwargs
+    # print args
+    # print kwargs
 
 @receiver(django_post_save)
 def post_save_to_qs_signals(sender, instance, *args, **kwargs):
@@ -112,8 +112,8 @@ def post_save_to_qs_signals(sender, instance, *args, **kwargs):
     else:
         # Does exist
         pass
-    print args
-    print kwargs
+    # print args
+    # print kwargs
 
 
 class SignalQuerySet(QuerySet):
