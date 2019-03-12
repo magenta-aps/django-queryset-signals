@@ -19,17 +19,36 @@ A library that will send signals on queryset data manipulation methods.
 
 What problem does it solve?
 ===========================
-Django sends many signals, including when a model instance is created, deleted
-and updated. However when using bulk methods like bulk_create or delete. There
-is no signal send, with this library signals are send on the following methods:
+Django has a built-in signal system, and sends signals on for instance model
+creations, updates and deletions. This signal system does however not extend to
+database method, such as bulk_create or delete.
 
-- bulk_create
-- delete 
-- get_or_create
-- update_or_create
-- update
+Below is a table, showing which signals are fired when:
++---------------------+---------------+------------------------------------------------------------------+
+|                     | Django signal | Django Queryset signals                                          |
++---------------------+------+--------+-------------+--------+---------------+------------------+--------+
+|                     | save | delete | bulk_create | delete | get_or_create | update_or_create | update |
++=====================+======+========+=============+========+===============+==================+========+
+| create              | X    | -      | -           | -      | -             | -                | -      |
++---------------------+------+--------+-------------+--------+---------------+------------------+--------+
+| save                | X    | -      | -           | -      | -             | -                | -      |
++---------------------+------+--------+-------------+--------+---------------+------------------+--------+
+| bulk_create         | -    | -      | X           | -      | -             | -                | -      |
++---------------------+------+--------+-------------+--------+---------------+------------------+--------+
+| qs_delete           | -    | -      | -           | X      | -             | -                | -      |
++---------------------+------+--------+-------------+--------+---------------+------------------+--------+
+| qs_delete_exist     | -    | X      | -           | X      | -             | -                | -      |
++---------------------+------+--------+-------------+--------+---------------+------------------+--------+
+| get_or_create       | X    | -      | -           | -      | X             | -                | -      |
++---------------------+------+--------+-------------+--------+---------------+------------------+--------+
+| get_or_create_exist | -    | -      | -           | -      | X             | -                | -      |
++---------------------+------+--------+-------------+--------+---------------+------------------+--------+
+| update_or_create    | X    | -      | -           | -      | -             | X                | -      |
++---------------------+------+--------+-------------+--------+---------------+------------------+--------+
+| update              | -    | -      | -           | -      | -             | X                | -      |
++---------------------+------+--------+-------------+--------+---------------+------------------+--------+
 
-A signal will be send before and after the method is executed.
+The exists entries are when data matching already exists.
 
 How do I install it?
 ====================
